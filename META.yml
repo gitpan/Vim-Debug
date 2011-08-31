@@ -1,0 +1,27 @@
+---
+abstract: 'A base class for Vim::Debug modules'
+author:
+  - 'Eric Johnson <vimdebug at iijo dot org>'
+build_requires:
+  English: 0
+  Net::Telnet: 0
+  Test::More: 0
+configure_requires:
+  ExtUtils::MakeMaker: 6.30
+dynamic_config: 0
+generated_by: 'Dist::Zilla version 4.200012, CPAN::Meta::Converter version 2.110440'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Vim-Debug
+requires:
+  Carp: 0
+  Class::Accessor::Fast: 0
+  IO::Pty: 0
+  IPC::Run: 0
+  POE: 0
+  VimDebug::Daemon: 0
+  parent: 0
+  perl: 5.010
+version: 0.6

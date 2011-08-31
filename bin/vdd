@@ -1,0 +1,46 @@
+#!/usr/bin/env perl
+#
+# (c) eric johnson 2002-3020
+# email: vimDebug at iijo dot org
+# http://iijo.org
+
+# PODNAME: vdd
+# ABSTRACT: The Vim Debugger Daemon
+
+use strict;
+use warnings;
+use VimDebug::Daemon;
+
+$SIG{INT} = \&signalHandler;
+
+VimDebug::Daemon->new->run;
+
+# die when children die
+sub signalHandler {
+   exit;
+}
+
+__END__
+=pod
+
+=head1 NAME
+
+vdd - The Vim Debugger Daemon
+
+=head1 VERSION
+
+version 0.6
+
+=head1 AUTHOR
+
+Eric Johnson <vimdebug at iijo dot org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2011 by Eric Johnson.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
+
