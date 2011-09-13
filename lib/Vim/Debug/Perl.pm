@@ -2,6 +2,9 @@
 
 
 package Vim::Debug::Perl;
+{
+  $Vim::Debug::Perl::VERSION = '0.8';
+}
 
 use strict;
 use warnings;
@@ -76,7 +79,7 @@ Vim::Debug::Perl - Perl debugger interface.
 
 =head1 VERSION
 
-version 0.7
+version 0.8
 
 =head1 SYNOPSIS
 

@@ -2,6 +2,9 @@
 
 
 package Vim::Debug::Daemon;
+{
+  $Vim::Debug::Daemon::VERSION = '0.8';
+}
 
 use strict;
 use warnings;
@@ -15,7 +18,6 @@ __PACKAGE__->mk_accessors( qw(vimdebug translatedInput) );
 
 
 # constants
-$Vim::Debug::Daemon::VERSION = "0.39";
 $| = 1;
 
 # protocol constants
@@ -229,7 +231,7 @@ Vim::Debug::Daemon - Handle communication between a debugger and clients
 
 =head1 VERSION
 
-version 0.7
+version 0.8
 
 =head1 SYNOPSIS
 

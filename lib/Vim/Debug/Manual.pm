@@ -1,5 +1,8 @@
 
 package Vim::Debug::Manual;
+{
+  $Vim::Debug::Manual::VERSION = '0.8';
+}
 
 __END__
 =pod
@@ -10,7 +13,7 @@ Vim::Debug::Manual
 
 =head1 VERSION
 
-version 0.7
+version 0.8
 
 =head1 DESCRIPTION
 
