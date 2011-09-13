@@ -1,5 +1,5 @@
 ---
-abstract: 'A base class for Vim::Debug modules'
+abstract: 'Perl wrapper around a command line debugger'
 author:
   - 'Eric Johnson <vimdebug at iijo dot org>'
 build_requires:
@@ -9,7 +9,7 @@ build_requires:
 configure_requires:
   ExtUtils::MakeMaker: 6.30
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 4.200012, CPAN::Meta::Converter version 2.110440'
+generated_by: 'Dist::Zilla version 4.300000, CPAN::Meta::Converter version 2.110440'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -22,6 +22,10 @@ requires:
   IPC::Run: 0
   POE: 0
   VimDebug::Daemon: 0
+  base: 0
+  feature: 0
   parent: 0
   perl: 5.010
-version: 0.6
+  strict: 0
+  warnings: 0
+version: 0.7

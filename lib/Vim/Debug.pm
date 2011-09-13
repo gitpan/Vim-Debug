@@ -1,10 +1,7 @@
-# ABSTRACT: A base class for Vim::Debug modules
+# ABSTRACT: Perl wrapper around a command line debugger
 
 
 package Vim::Debug;
-BEGIN {
-  $Vim::Debug::VERSION = '0.6';
-}
 
 use strict;
 use warnings;
@@ -29,7 +26,6 @@ __PACKAGE__->mk_accessors(
     qw(dbgrCmd timer dbgr stop shutdown lineNumber filePath value translatedInput READ WRITE
        debug original status oldOut)
 );
-
 
 sub start {
    my $self = shift or confess;
@@ -140,71 +136,117 @@ __END__
 
 =head1 NAME
 
-Vim::Debug - A base class for Vim::Debug modules
+Vim::Debug - Perl wrapper around a command line debugger
 
 =head1 VERSION
 
-version 0.6
+version 0.7
 
 =head1 SYNOPSIS
 
-   package Vim::Debug;
+If you are new to the Vim::Debug project please read the L<Vim::Debug::Manual> first.
 
-   use strict;
-   use warnings;
-   use base qw(Vim::Debug);
+    package Vim::Debug;
 
-   sub start {
-      my $self = shift or confess;
-      my $path               = shift or die;
-      my @commandLineOptions = @_;
-
-      # this regexe aids in parsing debugger output.  it is required.
-      $self->dbgrPromptRegex($dbgrPromptRegex);
-
-      $self->SUPER::startDebugger("perl -d $path @commandLineOptions");
-      return undef;
-   }
-
-   # 'n' is the command accepted by your language's debugger
-   sub next { return 'n' }
-   sub step { return 's' }
-   sub cont { return 'c' }
-   # ...etc
+    my $debugger = Vim::Debug->new;
+    $debugger->start;
+    $debugger->write('s'); # step
+    sleep(1) until $debugger->read;
+    print $debugger->lineNumber;
+    print $debugger->fileName;
+    print $debugger->output;
+    $debugger->write('q'); # quit
 
 =head1 DESCRIPTION
 
-This is a base class for developers wanting to add support to vimdebug for
-their language. 
+The Vim::Debug project integrates the Perl debugger with Vim, allowing
+developers to visually step through their code and examine variables.  
 
-=head2 read
+If you are new to the Vim::Debug project please read the L<Vim::Debug::Manual> first.
 
-Returns 1 when done
-Returns 0 if its not done
+Please note that this code is in beta and these libraries will be changing
+radically in the near future.
+
+=head1 PREREQUISITES
+
+Vim compiled with +signs and +perl.
+
+=head1 INSTALL INSTRUCTIONS
+
+Replace $VIMHOME with your vim configuration directory.  (/home/username/.vim on unix.)
+
+=head2 With cpanm
+
+    TODO
+
+=head2 With github
+
+    git clone git@github.com:kablamo/VimDebug.git
+    cd VimDebug
+    perl Makefile.PL
+    make
+    sudo make install
+    cp -r vim/* $VIMHOME/
+
+=head1 Vim::Debug
+
+The Vim::Debug class provides an object oriented wrapper around the Perl
+command line debugger.  
+
+Note that the read() method is non blocking. 
+
+=head1 FUNCTIONS
+
+=head2 start()
+
+Starts up the command line debugger in a seperate process.
+
+start() always returns undef.
+
+=head2 write($command)
+
+Write $command to the debugger's stdin.  This method blocks until the debugger process
+reads.  Be ssure to include a newline.
+
+write() always returns undef;
+
+=head2 read()
+
+Performs a nonblocking read on stdout from the debugger process.  read() first
+looks for a debugger prompt.  
+
+If one is not found, the debugger isn't finished thinking so read() returns 0.   
+
+If a debugger prompt is found, the output is parsed.  The following
+information is parsed out and saved into attributes: lineNumber(), fileName(),
+value(), and out().
+
+read() will also send an interrupt (CTL+C) to the debugger process if the
+stop() attribute is set to true.
 
 =head2 out($out)
 
-Remove ornaments (like <CTL-M> or irrelevant error messages or whatever) from
-text. 
+If called with a parameter, out() removes ornaments (like <CTL-M> or
+irrelevant error messages or whatever) from text and saves the value.
 
-Returns $out cleansed
+If called without a parameter, out() returns the saved value.
 
 =head2 lineNumber($number)
 
 If $number parameter is used, the lineNumber class attribute is set using that
-value.  If no parameters are passed, the current value of the lineNumber class
+value.  If no parameters are passed, the current value of the lineNumber 
 attribute is returned.
 
 =head2 filePath($path)
 
 If $path parameter is used, the filePath class attribute is set using that
-value.  If no parameters are passed, the current value of the filePath class
+value.  If no parameters are passed, the current value of the filePath 
 attribute is returned.
 
 =head2 dbgrPromptRegex($regex)
 
 If $regex parameter is used, the dbgrPromptRegex class attribute is set using that
-value.  If no parameters are passed, the current value of the dbgrPromptRegex class
+value.  If no parameters are passed, the current value of the dbgrPromptRegex 
 attribute is returned.
 
 =head1 SEE ALSO

@@ -11,6 +11,7 @@ documentation/DEVELOPER.HOWOTO
 documentation/TODO
 lib/Vim/Debug.pm
 lib/Vim/Debug/Daemon.pm
+lib/Vim/Debug/Manual.pm
 lib/Vim/Debug/Perl.pm
 t/author-critic.t
 t/gdb.c
