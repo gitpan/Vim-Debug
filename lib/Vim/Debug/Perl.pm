@@ -3,17 +3,13 @@
 
 package Vim::Debug::Perl;
 {
-  $Vim::Debug::Perl::VERSION = '0.8';
+  $Vim::Debug::Perl::VERSION = '0.001';
 }
 
-use strict;
-use warnings;
-use parent qw(Vim::Debug);
-use Carp;
+use Moose::Role;
 
 $ENV{"PERL5DB"}     = 'BEGIN {require "perl5db.pl";}';
 $ENV{"PERLDB_OPTS"} = "ornaments=''";
-
 
 
 
@@ -24,26 +20,26 @@ sub runtimeErrorRegex  { qr/ at .* line \d+${dpr}/ }
 sub appExitedRegex     { qr/((\/perl5db.pl:)|(Use .* to quit or .* to restart)|(\' to quit or \`R\' to restart))${dpr}/ }
 
 
-sub next                { return [ 'n'                  ] }
-sub step                { return [ 's'                  ] }
-sub cont                { return [ 'c'                  ] }
-sub break               { return [ "f $_[2]", "b $_[1]" ] }
-sub clear               { return [ "f $_[2]", "B $_[1]" ] }
-sub clearAll            { return [ "B *"                ] }
-sub print               { return [ "x $_[1]"            ] }
-sub command             { return [ $_[1]                ] }
-sub restart             { return [ "R"                  ] }
-sub quit                { return [ "q"                  ] }
+sub next                { return ( 'n'                  ) }
+sub step                { return ( 's'                  ) }
+sub cont                { return ( 'c'                  ) }
+sub break               { return ( "f $_[2]", "b $_[1]" ) }
+sub clear               { return ( "f $_[2]", "B $_[1]" ) }
+sub clearAll            { return ( "B *"                ) }
+sub print               { return ( "x $_[1]"            ) }
+sub command             { return ( $_[1]                ) }
+sub restart             { return ( "R"                  ) }
+sub quit                { return ( "q"                  ) }
 
 
 sub parseOutput {
-   my $self   = shift or confess;
-   my $output = shift or confess;
+   my $self   = shift or die;
+   my $output = shift or die;
 
    {
       # See .../t/VD_DI_Perl.t for test cases.
-      my $filePath;
-      my $lineNumber;
+      my $file;
+      my $line;
       $output =~ /
          ^ \w+ ::
          (?: \w+ :: )*
@@ -53,8 +49,8 @@ sub parseOutput {
             ( .+ ) : ( \d+ )
          \):
       /xm;
-      $self->filePath($1)   if defined $1;
-      $self->lineNumber($2) if defined $2;
+      $self->file($1)   if defined $1;
+      $self->line($2) if defined $2;
    }
 
    {
@@ -79,7 +75,7 @@ Vim::Debug::Perl - Perl debugger interface.
 
 =head1 VERSION
 
-version 0.8
+version 0.001
 
 =head1 SYNOPSIS
 
@@ -141,7 +137,7 @@ debugger uses 'n'.
 =head2 parseOutput($output)
 
 $output is output from the Perl debugger.  This method parses $output and
-saves relevant valus to the lineNumber, filePath, and output attributes (these
+saves relevant valus to the line, file, and output attributes (these
 attributes are defined in Vim::Debug)
 
 Returns undef.

@@ -13,10 +13,10 @@ lib/Vim/Debug.pm
 lib/Vim/Debug/Daemon.pm
 lib/Vim/Debug/Manual.pm
 lib/Vim/Debug/Perl.pm
+lib/Vim/Debug/Protocol.pm
 t/author-critic.t
 t/gdb.c
 t/lib/Vim/Debug/Client.pm
-t/lib/Vim/Debug/Client/Response.pm
 t/perl.compilerError.pl
 t/perl.parseOutput.t
 t/perl.pl

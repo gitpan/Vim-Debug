@@ -3,70 +3,58 @@
 
 package Vim::Debug::Daemon;
 {
-  $Vim::Debug::Daemon::VERSION = '0.8';
+  $Vim::Debug::Daemon::VERSION = '0.001';
 }
 
-use strict;
-use warnings;
-use feature qw(say);
-use base qw(Class::Accessor::Fast);
-
-use Carp;
+use Moose;
+use MooseX::ClassAttribute;
 use POE qw(Component::Server::TCP);
-
-__PACKAGE__->mk_accessors( qw(vimdebug translatedInput) );
-
+use Vim::Debug;
+use Vim::Debug::Protocol;
 
 # constants
 $| = 1;
 
-# protocol constants
-my $EOR            = "[vimdebug.eor]";       # end of field
-my $EOM            = "\r\nvimdebug.eom";     # end of field
-my $BAD_CMD        = "bad command";
-my $CONNECT        = "CONNECT";
-my $DISCONNECT     = "DISCONNECT";
-
-# connection constants
-my $PORT      = "6543";
-my $DONE_FILE = ".vdd.done";
-
 # global var
 my $shutdown = 0;
 
+has port => ( is => 'ro', isa => 'Int', default => 6543 );
+
+class_has debuggers => (
+    is      => 'rw',
+    isa     => 'HashRef',
+    default => sub {{}},
+);
 
 sub run {
-   my $self = shift or die;
+    my $self = shift or die;
 
-   $self->vimdebug({});
+    POE::Component::Server::TCP->new(
+        Port               => $self->port,
+        ClientConnected    => \&clientConnected,
+        ClientDisconnected => \&clientDisconnected,
+        ClientInput        => \&clientInput,
+        ClientError        => \&clientError,
+        InlineStates    => {
+            Start     => \&start,
+            Stop      => \&stop,
+            Translate => \&translate,
+            Write     => \&write,
+            Read      => \&read,
+            Out       => \&out,
+            Quit      => \&quit,
+        },
+    );
 
-   POE::Component::Server::TCP->new(
-      Port               => $PORT,
-      ClientConnected    => \&clientConnected,
-      ClientDisconnected => \&clientDisconnected,
-      ClientInput        => \&clientInput,
-      ClientError        => \&clientError,
-      ObjectStates       => [
-         $self => {
-            In           => 'in',
-            Translate    => 'translate',
-            Write        => 'write',
-            Read         => 'read',
-            Out          => 'out',
-         },
-      ],
-   );
-
-   POE::Kernel->run;
-   wait();
+    POE::Kernel->run;
+    wait();
 }
 
 sub clientConnected {
-   $_[HEAP]{client}->put(
-      $CONNECT . $EOR . $EOR . $EOR . $_[SESSION]->ID . $EOR . $EOM 
-   );
-   touch();
-   # $_[SESSION]->option(trace => 1, debug => 1);
+    my $response = Vim::Debug::Protocol->connect($_[SESSION]->ID);
+    $_[HEAP]{client}->put($response);
+    Vim::Debug::Protocol->touch;
+#   $_[SESSION]->option(trace => 1, debug => 1);
 }
 
 sub clientDisconnected {
@@ -81,144 +69,87 @@ sub clientError {
 }
 
 sub clientInput {
-   $_[KERNEL]->yield("In" => @_[ARG0..$#_]);
-}
+    my $state;
 
-sub in {
-   my $self  = $_[OBJECT];
-   my $input = $_[ARG0];
+       if ($_[ARG0] =~ /^start/) {$state = 'Start'    }
+    elsif ($_[ARG0] =~ /^stop/ ) {$state = 'Stop'     }
+    else                         {$state = 'Translate'}
 
-   # first connection from vim: spawn the debugger
-   #               start:sessionId:language:command
-   if ($input =~ /^start:(.+):(.+):(.+)$/) {
-      $self->vimdebug->{$1} = start( $2, $3 );
-      $_[KERNEL]->yield("Read" => @_[ARG0..$#_]);
-      return;
-   }
-
-   # second vim session asking the first session to stop working
-   #               stop:sessionId
-   if ($input =~ /^stop:(.+)$/) {
-      my $sessionId = $1;
-      if (defined $self->vimdebug->{$sessionId}) {
-         $self->vimdebug->{$sessionId}->stop(1);
-         $_[HEAP]{client}->event(FlushedEvent => "shutdown");
-         $_[HEAP]{client}->put($DISCONNECT . $EOR . $EOR . $EOR . $EOR . $EOM);
-         $self->touch;
-         return;
-      }
-      die "ERROR 003.  Email vimdebug at iijo dot org.";
-   }
-
-   # input from current session.  
-   $_[KERNEL]->yield("Translate" => @_[ARG0..$#_]);
+    $_[KERNEL]->yield($state => @_[ARG0..$#_]);
 }
 
 sub start {
-   my $language = shift or die;
-   my $command  = shift or die;
+    die 'ERROR 004.  Email vimdebug at iijo dot org.'
+        unless $_[ARG0] =~ /^start:(.+):(.+):(.+)$/x;
 
-   # load module
-   my $moduleName = "Vim/Debug/${language}.pm";
-   require $moduleName;
+    my ($sessionId, $language, $command) = ($1, $2, $3);
 
-   # create debugger object
-   my $debuggerName = 'Vim::Debug::' . ${language};
-   my $v = eval $debuggerName . "->new();";
-   die "no such module exists: $debuggerName: $@" unless defined $v;
+    __PACKAGE__->debuggers->{$sessionId} = Vim::Debug->new(
+        language => $language, 
+        invoke   => $command
+    )->start;
 
-   my @cmd = split(/\s+/, $command);
-   $v->dbgrCmd(\@cmd);
-   $v->start();
+    $_[HEAP]{debugger}    = __PACKAGE__->debuggers->{$sessionId};
+    $_[HEAP]{translation} = [];
 
-   return $v;
+    $_[KERNEL]->yield("Read" => @_[ARG0..$#_]);
+}
+
+sub stop {
+    die 'ERROR 005.  Email vimdebug at iijo dot org.'
+        unless $_[ARG0] =~ /^stop:(.+)$/x;
+
+    my $sessionId = $1;
+
+    die 'ERROR 006.  Email vimdebug at iijo dot org.'
+        unless defined __PACKAGE__->debuggers->{$sessionId};
+
+    __PACKAGE__->debuggers->{$sessionId}->stop(1);
+    $_[HEAP]{client}->event(FlushedEvent => "shutdown");
+    $_[HEAP]{client}->put(Vim::Debug::Protocol->disconnect);
+    Vim::Debug::Protocol->touch;
 }
 
 sub translate {
-   my $self = $_[OBJECT];
-   my $v    = $self->vimdebug->{$_[SESSION]->ID};
-   my $in   = $_[ARG0];
-   my $cmds;
+    # Translate protocol $in to native debugger cmds. 
+    $_[HEAP]{translation} = $_[HEAP]{debugger}->translate($_[ARG0]);
+    $_[KERNEL]->yield("Write", @_[ARG0..$#_]);
+}
 
-   # translate protocol $in to native debugger @cmds
-      if ($in =~ /^next$/            ) { $cmds = $v->next           }
-   elsif ($in =~ /^step$/            ) { $cmds = $v->step           }
-   elsif ($in =~ /^cont$/            ) { $cmds = $v->cont           }
-   elsif ($in =~ /^break:(\d+):(.+)$/) { $cmds = $v->break($1, $2)  }
-   elsif ($in =~ /^clear:(\d+):(.+)$/) { $cmds = $v->clear($1, $2)  }
-   elsif ($in =~ /^clearAll$/        ) { $cmds = $v->clearAll       }
-   elsif ($in =~ /^print:(.+)$/      ) { $cmds = $v->print($1)      }
-   elsif ($in =~ /^command:(.+)$/    ) { $cmds = $v->command($1)    }
-   elsif ($in =~ /^restart$/         ) { $cmds = $v->restart        }
-   elsif ($in =~ /^quit$/            ) { $cmds = $v->quit($1)       }
-#  elsif ($in =~ /^(\w+):(.+)$/      ) { $cmds = $v->$1($2)         }
-#  elsif ($in =~ /^(\w+)$/           ) { $cmds = $v->$1()           }
-   else { die "ERROR 002.  Please email vimdebug at iijo dot org.\n" }
-
-   $v->translatedInput($cmds);
-   $_[KERNEL]->yield("Write", @_[ARG0..$#_]);
+sub quit {
+    $_[HEAP]{debugger}->finish; # makes sure the child process exits;
+    $shutdown = 1;
+    $_[HEAP]{client}->event(FlushedEvent => "shutdown");
+    $_[HEAP]{client}->put(Vim::Debug::Protocol->disconnect);
+    Vim::Debug::Protocol->touch;
 }
 
 sub write {
-   my $self = $_[OBJECT];
-   my $in   = $_[ARG0];
-   my $v    = $self->vimdebug->{$_[SESSION]->ID};
-   my $cmds = $v->translatedInput();
+    my $cmds = $_[HEAP]{translation};
+    my $state;
 
-   if (scalar(@$cmds) == 0) {
-      $_[KERNEL]->yield("Out" => @_[ARG0..$#_]);
-   }
-   else {
-      my $c = pop @$cmds;
-      $v->write($c);
-
-      chomp($in);
-      if ($in eq 'quit') {
-         $v->dbgr->finish; # makes sure the child process exits
-         $shutdown = 1;
-         $_[HEAP]{client}->event(FlushedEvent => "shutdown");
-         $_[HEAP]{client}->put($DISCONNECT . $EOR . $EOR . $EOR . $EOR . $EOM);
-         return;
-      }
-      $_[KERNEL]->yield("Read" => @_[ARG0..$#_]);
-   }
-
-   return;
+    if (scalar(@$cmds) == 0) { 
+        $state = 'Out';
+    }
+    else {
+        $state = $_[ARG0] =~ /^quit/ ? 'Quit' : 'Read';
+        $_[HEAP]{debugger}->write(pop @$cmds);
+    }
+    $_[KERNEL]->yield($state => @_[ARG0..$#_]);
 }
 
 sub read {
-   my $self = $_[OBJECT];
-   my $v    = $self->vimdebug->{$_[SESSION]->ID};
-   $v->read(@_)
+   $_[HEAP]{debugger}->read($_[ARG0])
        ?  $_[KERNEL]->yield("Write" => @_[ARG0..$#_])
        :  $_[KERNEL]->yield("Read"  => @_[ARG0..$#_]);
 }
 
 sub out {
-   my $self = $_[OBJECT];
-   my $v    = $self->vimdebug->{$_[SESSION]->ID};
-   my $out;
-
-   if (defined $v->lineNumber and defined $v->filePath) {
-      $out = $v->status     . $EOR .
-             $v->lineNumber . $EOR .
-             $v->filePath   . $EOR .
-             $v->value      . $EOR .
-             $v->out        . $EOM;
-   }
-   else {
-      $out = $v->status . $EOR . $EOR . $EOR . $EOR . $v->out . $EOM;
-   }
-
-   $_[HEAP]{client}->put($out);
-   $self->touch;
+    my $response = Vim::Debug::Protocol->response($_[HEAP]{debugger}->state);
+    $_[HEAP]{client}->put($response);
+    Vim::Debug::Protocol->touch;
 }
 
-sub touch {
-   open(FILE, ">", $DONE_FILE);
-   print FILE "\n";
-   close(FILE);
-}
 
 1;
 
@@ -231,7 +162,7 @@ Vim::Debug::Daemon - Handle communication between a debugger and clients
 
 =head1 VERSION
 
-version 0.8
+version 0.001
 
 =head1 SYNOPSIS
 
@@ -306,16 +237,19 @@ And then exit.
 =head1 POE STATE DIAGRAM
 
     ClientConnected
-    
-    ClientInput
-        |                               __
-        v                              v  |
-       In -> Translate -> Write --> Read  |
-                          |   ^     |  |  |
-                          |   |_____|  |__|
-                          |   
-                          v
-                         Out
+        
+            ---> Stop
+           |
+    ClientInput ----------> Start
+      |                      |   
+      |                      |   __
+      v                      v  v  |
+     Translate --> Write --> Read  |
+                   |   ^     |  |  |
+                   |   |_____|  |__|
+                   |   
+                   v
+                  Out
 
 =head1 AUTHOR
 

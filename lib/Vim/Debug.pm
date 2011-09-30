@@ -3,17 +3,14 @@
 
 package Vim::Debug;
 {
-  $Vim::Debug::VERSION = '0.8';
+  $Vim::Debug::VERSION = '0.001';
 }
-
-use strict;
-use warnings;
-use Class::Accessor::Fast;
-use base qw(Class::Accessor::Fast);
 
 use Carp;
 use IO::Pty;
 use IPC::Run;
+use Moose ;
+use Moose::Util qw(apply_all_roles);
 
 $| = 1;
 
@@ -25,42 +22,70 @@ my $RUNTIME_ERROR  = "runtime error";
 my $APP_EXITED     = "application exited";
 my $DBGR_READY     = "debugger ready";
 
-__PACKAGE__->mk_accessors(
-    qw(dbgrCmd timer dbgr stop shutdown lineNumber filePath value translatedInput READ WRITE
-       debug original status oldOut)
-);
+has invoke   => ( is => 'ro', isa => 'Str', required => 1 );
+has language => ( is => 'ro', isa => 'Str', required => 1 );
+
+has stop            => ( is => 'rw', isa => 'Int' );
+has line            => ( is => 'rw', isa => 'Int' );
+has file            => ( is => 'rw', isa => 'Str' );
+has value           => ( is => 'rw', isa => 'Str' );
+has status          => ( is => 'rw', isa => 'Str' );
+
+has _timer    => ( is => 'rw', isa => 'IPC::Run::Timer' );
+has _dbgr     => ( is => 'rw', isa => 'IPC::Run', handles => [qw(finish)] );
+has _READ     => ( is => 'rw', isa => 'Str' );
+has _WRITE    => ( is => 'rw', isa => 'Str' );
+has _original => ( is => 'rw', isa => 'Str' );
+has _out      => ( is => 'rw', isa => 'Str' );
+
+around BUILDARGS => sub {
+    my $orig  = shift;
+    my $class = shift;
+    my %args  = @_;
+
+    if (defined $args{invoke} && $args{invoke} eq 'SCALAR') {
+        $args{invoke} = [split(/\s+/, $args{invoke})];
+        return $class->$orig(%args);
+    }
+    
+    return $class->$orig(@_);
+};
+
+sub BUILD {
+    my $self = shift;
+    apply_all_roles($self, 'Vim::Debug::' . $self->language);
+}
 
 sub start {
-   my $self = shift or confess;
+    my $self = shift or confess;
 
-   # initialize some variables
-   $self->original('');
-   $self->out('');
-   $self->value('');
-   $self->oldOut('');
-   $self->translatedInput([]);
-   $self->debug(0);
-   $self->timer(IPC::Run::timeout(10, exception => 'timed out'));
+    $self->value('');
+    $self->_out('');
+    $self->_original('');
+    $self->_timer(IPC::Run::timeout(10, exception => 'timed out'));
 
-   # spawn debugger process
-   $self->dbgr(
-      IPC::Run::start(
-         $self->dbgrCmd, 
-         '<pty<', \$WRITE,
-         '>pty>', \$READ,
-         $self->timer
-      )
-   );
-   return undef;
+    my @cmd = split(qr/\s+/, $self->invoke);
+
+    # spawn debugger process
+    $self->_dbgr(
+        IPC::Run::start(
+          \@cmd, 
+          '<pty<', \$WRITE,
+          '>pty>', \$READ,
+          $self->_timer
+       )
+    );
+
+    return $self;
 }
 
 sub write {
-   my $self = shift or confess;
-   my $c    = shift or confess;
-   $self->value('');
-   $self->stop(0);
-   $WRITE .= "$c\n";
-   return;
+    my $self = shift or confess;
+    my $c    = shift or confess;
+    $self->value('');
+    $self->stop(0);
+    $WRITE .= "$c\n";
+    return;
 }
 
 sub read {
@@ -72,12 +97,11 @@ sub read {
    my $runtimeErrorRegex  = $self->runtimeErrorRegex;
    my $appExitedRegex     = $self->appExitedRegex;
 
-   $self->timer->reset();
-   eval { $self->dbgr->pump_nb() };
+   $self->_timer->reset();
+   eval { $self->_dbgr->pump_nb() };
    my $out = $READ;
 
    if ($@ =~ /process ended prematurely/) {
-       print "::read(): process ended prematurely\n" if $self->debug;
        undef $@;
        return 1;
    }
@@ -86,13 +110,12 @@ sub read {
    }
 
    if ($self->stop) {
-       print "::read(): stopping\n" if $self->debug;
-       $self->dbgr->signal("INT");
-       $self->timer->reset();
-       $self->dbgr->pump() until ($READ =~ /$dbgrPromptRegex/    || 
-                                  $READ =~ /$compilerErrorRegex/ || 
-                                  $READ =~ /$runtimeErrorRegex/  || 
-                                  $READ =~ /$appExitedRegex/); 
+       $self->_dbgr->signal("INT");
+       $self->_timer->reset();
+       $self->_dbgr->pump() until ($READ =~ /$dbgrPromptRegex/    || 
+                                   $READ =~ /$compilerErrorRegex/ || 
+                                   $READ =~ /$runtimeErrorRegex/  || 
+                                   $READ =~ /$appExitedRegex/); 
        $out = $READ;
    }
 
@@ -104,7 +127,7 @@ sub read {
    elsif ($self->out =~ $appExitedRegex)     { $self->status($APP_EXITED)     }
    else                                      { return 0                       }
 
-   $self->original($out);
+   $self->_original($out);
    $self->parseOutput($self->out);
 
    return 1;
@@ -117,7 +140,7 @@ sub out {
    if (@_) {
       $out = shift;
 
-      my $originalLen = length $self->original;
+      my $originalLen = length $self->_original;
       $out = substr($out, $originalLen);
         
       # vim is not displaying newline characters correctly for some reason.
@@ -125,10 +148,43 @@ sub out {
       $out =~ s/(?:\015{1,2}\012|\015|\012)/\n/sg;
 
       # save
-      $self->{out} = $out;
+      $self->_out($out);
    }
 
-   return $self->{out};
+   return $self->_out;
+}
+
+sub translate {
+    my ($self, $in) = @_;
+    my @cmds = ();
+
+       if ($in =~ /^next$/            ) { @cmds = $self->next          }
+    elsif ($in =~ /^step$/            ) { @cmds = $self->step          }
+    elsif ($in =~ /^cont$/            ) { @cmds = $self->cont          }
+    elsif ($in =~ /^break:(\d+):(.+)$/) { @cmds = $self->break($1, $2) }
+    elsif ($in =~ /^clear:(\d+):(.+)$/) { @cmds = $self->clear($1, $2) }
+    elsif ($in =~ /^clearAll$/        ) { @cmds = $self->clearAll      }
+    elsif ($in =~ /^print:(.+)$/      ) { @cmds = $self->print($1)     }
+    elsif ($in =~ /^command:(.+)$/    ) { @cmds = $self->command($1)   }
+    elsif ($in =~ /^restart$/         ) { @cmds = $self->restart       }
+    elsif ($in =~ /^quit$/            ) { @cmds = $self->quit($1)      }
+#   elsif ($in =~ /^(\w+):(.+)$/      ) { @cmds = $self->$1($2)        }
+#   elsif ($in =~ /^(\w+)$/           ) { @cmds = $self->$1()          }
+    else { die "ERROR 002.  Please email vimdebug at iijo dot org.\n"  }
+
+    return \@cmds;
+}
+
+sub state {
+    my $self = shift;
+    return (
+        stop       => $self->stop,
+        line       => $self->line,
+        file       => $self->file,
+        value      => $self->value,
+        status     => $self->status,
+        output     => $self->out,
+    );
 }
 
 
@@ -143,7 +199,7 @@ Vim::Debug - Perl wrapper around a command line debugger
 
 =head1 VERSION
 
-version 0.8
+version 0.001
 
 =head1 SYNOPSIS
 
@@ -155,8 +211,8 @@ If you are new to the Vim::Debug project please read the L<Vim::Debug::Manual> f
     $debugger->start;
     $debugger->write('s'); # step
     sleep(1) until $debugger->read;
-    print $debugger->lineNumber;
-    print $debugger->fileName;
+    print $debugger->line;
+    print $debugger->file;
     print $debugger->output;
     $debugger->write('q'); # quit
 
@@ -209,7 +265,7 @@ start() always returns undef.
 =head2 write($command)
 
 Write $command to the debugger's stdin.  This method blocks until the debugger process
-reads.  Be ssure to include a newline.
+reads.  Be sure to include a newline.
 
 write() always returns undef;
 
@@ -221,7 +277,7 @@ looks for a debugger prompt.
 If one is not found, the debugger isn't finished thinking so read() returns 0.   
 
 If a debugger prompt is found, the output is parsed.  The following
-information is parsed out and saved into attributes: lineNumber(), fileName(),
+information is parsed out and saved into attributes: line(), file(),
 value(), and out().
 
 read() will also send an interrupt (CTL+C) to the debugger process if the
@@ -234,16 +290,23 @@ irrelevant error messages or whatever) from text and saves the value.
 
 If called without a parameter, out() returns the saved value.
 
-=head2 lineNumber($number)
+=head2 translate($in)                                                                                                          
 
-If $number parameter is used, the lineNumber class attribute is set using that
-value.  If no parameters are passed, the current value of the lineNumber 
+Translate a protocol command ($in) to a native debugger command.  The native                                                   
+debugger command is returned as an arrayref of strings.                                                                           
+
+Dies if no translation is found.                                                                                               
+
+=head2 line($number)
+
+If $number parameter is used, the line class attribute is set using that
+value.  If no parameters are passed, the current value of the line
 attribute is returned.
 
-=head2 filePath($path)
+=head2 file($path)
 
-If $path parameter is used, the filePath class attribute is set using that
-value.  If no parameters are passed, the current value of the filePath 
+If $path parameter is used, the file class attribute is set using that
+value.  If no parameters are passed, the current value of the file
 attribute is returned.
 
 =head2 dbgrPromptRegex($regex)

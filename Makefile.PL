@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use 5.010;
+use 5.006;
 
 use ExtUtils::MakeMaker 6.30;
 
@@ -27,18 +27,17 @@ my %WriteMakefileArgs = (
   "NAME" => "Vim::Debug",
   "PREREQ_PM" => {
     "Carp" => 0,
-    "Class::Accessor::Fast" => 0,
     "IO::Pty" => 0,
     "IPC::Run" => 0,
+    "Moose" => 0,
+    "Moose::Role" => 0,
+    "Moose::Util" => 0,
+    "MooseX::ClassAttribute" => 0,
     "POE" => 0,
-    "VimDebug::Daemon" => 0,
-    "base" => 0,
-    "feature" => 0,
-    "parent" => 0,
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "0.8",
+  "VERSION" => "0.001",
   "test" => {
     "TESTS" => "t/*.t"
   }
