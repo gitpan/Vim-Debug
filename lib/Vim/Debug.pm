@@ -3,7 +3,7 @@
 
 package Vim::Debug;
 {
-  $Vim::Debug::VERSION = '0.001';
+  $Vim::Debug::VERSION = '0.9';
 }
 
 use Carp;
@@ -199,7 +199,7 @@ Vim::Debug - Perl wrapper around a command line debugger
 
 =head1 VERSION
 
-version 0.001
+version 0.9
 
 =head1 SYNOPSIS
 

@@ -3,7 +3,7 @@
 
 package Vim::Debug::Protocol;
 {
-  $Vim::Debug::Protocol::VERSION = '0.001';
+  $Vim::Debug::Protocol::VERSION = '0.9';
 }
 
 use Moose;
@@ -71,7 +71,7 @@ Vim::Debug::Protocol - Everything needed for the VimDebug network protocol
 
 =head1 VERSION
 
-version 0.001
+version 0.9
 
 =head1 SYNOPSIS
 

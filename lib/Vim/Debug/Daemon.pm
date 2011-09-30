@@ -3,7 +3,7 @@
 
 package Vim::Debug::Daemon;
 {
-  $Vim::Debug::Daemon::VERSION = '0.001';
+  $Vim::Debug::Daemon::VERSION = '0.9';
 }
 
 use Moose;
@@ -162,7 +162,7 @@ Vim::Debug::Daemon - Handle communication between a debugger and clients
 
 =head1 VERSION
 
-version 0.001
+version 0.9
 
 =head1 SYNOPSIS
 
