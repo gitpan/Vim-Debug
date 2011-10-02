@@ -3,7 +3,7 @@
 
 package Vim::Debug::Perl;
 {
-  $Vim::Debug::Perl::VERSION = '0.10';
+  $Vim::Debug::Perl::VERSION = 'v0.10';
 }
 
 use Moose::Role;
@@ -75,7 +75,7 @@ Vim::Debug::Perl - Perl debugger interface.
 
 =head1 VERSION
 
-version 0.10
+version v0.10
 
 =head1 DESCRIPTION
 
