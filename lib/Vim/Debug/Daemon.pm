@@ -3,7 +3,7 @@
 
 package Vim::Debug::Daemon;
 {
-  $Vim::Debug::Daemon::VERSION = '0.9';
+  $Vim::Debug::Daemon::VERSION = '0.10';
 }
 
 use Moose;
@@ -162,7 +162,7 @@ Vim::Debug::Daemon - Handle communication between a debugger and clients
 
 =head1 VERSION
 
-version 0.9
+version 0.10
 
 =head1 SYNOPSIS
 
@@ -171,85 +171,19 @@ version 0.9
 
 =head1 DESCRIPTION
 
-This module implements a Vim::Debug daemon.  The daemon manages communication
-between one or more clients and their debuggers.  Clients will usually be an
-editor like Vim.  A debugger is spawned for each client.  
+If you are new to Vim::Debug please read the user manual,
+L<Vim::Debug::Manual>, first.
 
-Internally this is implemented with POE and does non blocking reads for
-debugger output.
+This module implements a TCP server.  Clients will usually be an editor like
+Vim.  A debugger is spawned for each client.  The daemon manages communication
+between one or more clients and their debuggers.  
 
-=head1 COMMUNICATION PROTOCOL
+Internally this is implemented with POE so that it can do non blocking reads
+for debugger output.  This allows the user to send an interrupt.  This is
+useful when, for example, an infinite loop occurs or if something is just
+taking a long time.
 
-All messages passed between the client (vim) and the daemon (vdd) consist of a
-set of fields followed by an End Of Message string.  Each field is seperated
-from the next by an End Of Record string.
-
-All messages to the client have the following format:
-
-    Debugger status
-    End Of Record
-    Line Number
-    End Of Record
-    File Name
-    End Of Record
-    Value
-    End Of Record
-    Debugger output
-    End Of Message
-
-All messages to the server have the following format:
-
-    Action (eg step, next, break, ...)
-    End Of Record
-    Parameter 1
-    End Of Record
-    Parameter 2
-    End Of Record
-    ..
-    Parameter n 
-    End Of Message
-
-After every message, the daemon also touches a file.  Which is kind of crazy.
-
-=head2 Connecting
-
-When you connect to the Vim::Debug Daemon (vdd), it will send you a message
-that looks like this:
-
-    $CONNECT . $EOR . $EOR . $EOR . $SESSION_ID . $EOR . $EOM 
-
-You should respond with a message that looks like
-
-    'create' . $EOR . $SESSION_ID . $EOR . $LANGUAGE $EOR $DBGR_COMMAND $EOM
-
-=head2 Disconnecting
-
-To disconnect send a 'quit' message.
-
-    'quit' . $EOM
-
-The server will respond with:
-
-    $DISCONNECT . $EOR . $EOR . $EOR . $EOR . $EOM
-
-And then exit.
-
-=head1 POE STATE DIAGRAM
-
-    ClientConnected
-        
-            ---> Stop
-           |
-    ClientInput ----------> Start
-      |                      |   
-      |                      |   __
-      v                      v  v  |
-     Translate --> Write --> Read  |
-                   |   ^     |  |  |
-                   |   |_____|  |__|
-                   |   
-                   v
-                  Out
+See L<Vim::Debug::Protocol> for a description of the communication protocol.
 
 =head1 AUTHOR
 

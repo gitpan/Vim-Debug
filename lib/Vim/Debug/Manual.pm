@@ -3,7 +3,7 @@
 
 package Vim::Debug::Manual;
 {
-  $Vim::Debug::Manual::VERSION = '0.9';
+  $Vim::Debug::Manual::VERSION = '0.10';
 }
 
 __END__
@@ -15,7 +15,7 @@ Vim::Debug::Manual - What is Vim::Debug and how do I use it?
 
 =head1 VERSION
 
-version 0.9
+version 0.10
 
 =head1 DESCRIPTION
 

@@ -3,7 +3,7 @@
 
 package Vim::Debug::Perl;
 {
-  $Vim::Debug::Perl::VERSION = '0.9';
+  $Vim::Debug::Perl::VERSION = '0.10';
 }
 
 use Moose::Role;
@@ -75,22 +75,16 @@ Vim::Debug::Perl - Perl debugger interface.
 
 =head1 VERSION
 
-version 0.9
-
-=head1 SYNOPSIS
-
-If you are new to the Vim::Debug project please read the L<Vim::Debug::Manual> first.
-
-    package Vim::Debug::Perl
-
-    my $debugger = Vim::Debug::Perl->new;
-    $debugger->next;
-    $debugger->step;
+version 0.10
 
 =head1 DESCRIPTION
 
-This module inherits from Vim::Debug.  See that module for a more in depth
-explanation.  This module only handles the Perl specific bits.
+If you are new to Vim::Debug please read the user manual,
+L<Vim::Debug::Manual>, first.
+
+This module is a role that is dynamically applied to an Vim::Debug instance.
+L<Vim::Debug> represents a debugger.  This module only handles the Perl
+specific bits.  Theoretically there might be a Ruby or Python role someday.
 
 =head1 DEBUGGER OUTPUT REGEX CLASS ATTRIBUTES
 
@@ -107,7 +101,7 @@ They return a regex and ignore all values passed to them.
 
 =head1 TRANSLATION CLASS ATTRIBUTES
 
-These attributes are used by Vim::Debug::Daemon to convert commands from the
+These attributes are used to convert commands from the
 communication protocol to commands the Perl debugger can recognize.  For
 example, the communication protocol uses the keyword 'next' while the Perl
 debugger uses 'n'.
