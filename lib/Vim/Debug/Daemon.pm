@@ -3,7 +3,7 @@
 
 package Vim::Debug::Daemon;
 
-our $VERSION = '0.13'; # VERSION
+our $VERSION = '0.14'; # VERSION
 
 use Moose;
 use MooseX::ClassAttribute;

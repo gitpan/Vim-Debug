@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # PODNAME: vimdebug-install
 # ABSTRACT: Install VimDebug's Vim plugin and doc files.
-our $VERSION = '0.13'; # VERSION
+our $VERSION = '0.14'; # VERSION
 
 use strict;
 use warnings;

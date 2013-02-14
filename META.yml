@@ -27,19 +27,19 @@ no_index:
 provides:
   Vim::Debug:
     file: lib/Vim/Debug.pm
-    version: 0.13
+    version: 0.14
   Vim::Debug::Daemon:
     file: lib/Vim/Debug/Daemon.pm
-    version: 0.13
+    version: 0.14
   Vim::Debug::Manual:
     file: lib/Vim/Debug/Manual.pm
-    version: 0.13
+    version: 0.14
   Vim::Debug::Perl:
     file: lib/Vim/Debug/Perl.pm
-    version: 0.13
+    version: 0.14
   Vim::Debug::Protocol:
     file: lib/Vim/Debug/Protocol.pm
-    version: 0.13
+    version: 0.14
 requires:
   Carp: 0
   File::Basename: 0
@@ -62,4 +62,4 @@ resources:
   bugtracker: https://github.com/kablamo/VimDebug/issues
   homepage: https://metacpan.org/release/Vim-Debug
   repository: git://github.com/kablamo/VimDebug.git
-version: 0.13
+version: 0.14
