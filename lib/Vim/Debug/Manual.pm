@@ -1,63 +1,50 @@
-# ABSTRACT: What is Vim::Debug and how do I use it?
+# ABSTRACT: Integrate the Perl debugger with Vim
 
 
 package Vim::Debug::Manual;
-{
-  $Vim::Debug::Manual::VERSION = 'v0.10';
-}
+
+our $VERSION = '0.13'; # VERSION
 
 __END__
+
 =pod
+
+=encoding utf-8
 
 =head1 NAME
 
-Vim::Debug::Manual - What is Vim::Debug and how do I use it?
+Vim::Debug::Manual - Integrate the Perl debugger with Vim
 
-=head1 VERSION
+=head1 What is VimDebug?
 
-version v0.10
+VimDebug integrates the Perl debugger with Vim, allowing developers to
+visually step through their code, examine variables, set or clear
+breakpoints, etc.
 
-=head1 DESCRIPTION
+VimDebug is known to work under Unix/Ubuntu/OSX. It requires Perl
+5.FIXME or later and some CPAN modules may need to be installed.  It
+also requires a Vim 7.FIXME or later that was built with the +signs
+and +perl extensions.
 
-Vim::Debug integrates the Perl debugger with Vim, allowing developers to
-visually step through their code and examine variables.  
+=head1 How do I install VimDebug?
 
-Please note that this code is in beta.
+The VimDebug code has a Perl component and a Vim component.
 
-=head1 PREREQUISITES
+First, install the Perl component, Vim::Debug, from CPAN, like you
+would any other Perl module, Then, install the Vim component (which
+the installed Perl component knows about) by running:
 
-=over 4
+    vimdebug-install -d ~/.vim
 
-=item Unix/Ubuntu/OSX
+You may want to replace C<~/.vim> by some other directory that your
+Vim recognizes as a runtimepath directory. See Vim's ":help
+'runtimepath'" for more information.
 
-=item Vim with +signs, and +perl compiled in
+=head1 Using VimDebug
 
-=item Perl 5.6.0+
-
-=item The Vim::Debug Perl module
-
-=back
-
-=head1 INSTALL INSTRUCTIONS
-
-=head2 With cpanm
-
-    TODO
-
-=head2 With github
-
-    git clone git@github.com:kablamo/VimDebug.git
-    cd VimDebug
-    perl Makefile.PL
-    make
-    sudo make install
-    cp -r vim/* $VIMHOME/
-
-Replace $VIMHOME with your vim configuration directory.  (/home/username/.vim on unix.)
-
-head1 KEY BINDINGS
-
-These are the default key bindings.  To change them, edit VimDebug.vim:
+Launch Vim and open a file named with a ".pl" extension. Press <F12>
+to start the debugger. To change the default Vim key bindings, shown
+here, edit VimDebug.vim:
 
     <F12>      Start the debugger
     <Leader>s/ Start the debugger.  Prompts for command line arguments.
@@ -76,20 +63,28 @@ These are the default key bindings.  To change them, edit VimDebug.vim:
 
     <Leader>/  Type a command for the debugger to execute and echo the result
 
-=head1 DEVELOPERS
+=head1 Improving VimDebug
 
-Fork it on github: http://github.com/kablamo/VimDebug
+VimDebug is on github: https://github.com/kablamo/VimDebug.git
+
+To do development work on VimDebug, clone its git repo and read
+./documentation/DEVELOPER.HOWOTO.
+
+In principle, the VimDebug code can be extended to handle other
+debuggers, like the one for Ruby or Python, but that remains to be
+done.
+
+Please note that this code is in beta.
 
 =head1 AUTHOR
 
-Eric Johnson <vimdebug at iijo dot org>
+Eric Johnson <kablamo at iijo dot nospamthanks dot org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2011 by Eric Johnson.
+This software is copyright (c) 2013 by Eric Johnson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

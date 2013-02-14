@@ -3,24 +3,25 @@
 " http://iijo.org
 
 if (!has('perl') && !has('signs'))
+    echo "VimDebug requires +perl and +signs"
     finish
 endif
 
 
 " key bindings
-map <F12>         :DBGRstart<CR>
-map <Leader><F12> :DBGRstart<SPACE>
-map <F7>          :DBGRstep<CR>
-map <F8>          :DBGRnext<CR>
-map <F9>          :DBGRcont<CR>                   " continue
-map <Leader>b     :DBGRsetBreakPoint<CR>
-map <Leader>c     :DBGRclearBreakPoint<CR>
-map <Leader>ca    :DBGRclearAllBreakPoints<CR>
-map <Leader>v/    :DBGRprint<SPACE>
-map <Leader>v     :DBGRprintExpand expand("<cWORD>")<CR> " value under cursor
-map <Leader>/     :DBGRcommand<SPACE>
-map <F10>         :DBGRrestart<CR>
-map <F11>         :DBGRquit<CR>
+map <unique> <F12>         :DBGRstart<CR>
+map <unique> <Leader><F12> :DBGRstart<SPACE>perl -Ilib -d <C-R>%
+map <unique> <F7>          :DBGRstep<CR>
+map <unique> <F8>          :DBGRnext<CR>
+map <unique> <F9>          :DBGRcont<CR>                   " continue
+map <unique> <Leader>b     :DBGRsetBreakPoint<CR>
+map <unique> <Leader>c     :DBGRclearBreakPoint<CR>
+map <unique> <Leader>ca    :DBGRclearAllBreakPoints<CR>
+map <unique> <Leader>v/    :DBGRprint<SPACE>
+map <unique> <Leader>v     :DBGRprintExpand expand("<cWORD>")<CR> " value under cursor
+map <unique> <Leader>/     :DBGRcommand<SPACE>
+map <unique> <F10>         :DBGRrestart<CR>
+map <unique> <F11>         :DBGRquit<CR>
 
 " commands
 command! -nargs=* DBGRstart               call DBGRstart("<args>")
@@ -69,8 +70,8 @@ let s:HOST            = "localhost"
 let s:DONE_FILE       = ".vdd.done"
 
 " script variables
-let s:dbgrIsRunning   = 0
 let s:incantation     = ""
+let s:dbgrIsRunning   = 0    " 0: !running, 1: running, 2: starting
 let s:debugger        = ""
 let s:lineNumber      = 0
 let s:fileName        = ""
@@ -89,7 +90,8 @@ function! DBGRstart(...)
       echo "\rthe debugger is already running"
       return
    endif
-   let s:incantation = s:Incantation()
+   let s:dbgrIsRunning = 2
+   let s:incantation = s:Incantation(a:1)
    call s:StartVdd()
    " do after system() so nongui vim doesn't show a blank screen
    echo "\rstarting the debugger..."
@@ -98,13 +100,13 @@ function! DBGRstart(...)
       autocmd VimLeave * call DBGRquit()
    endif
    call DBGRopenConsole()
-   let s:dbgrIsRunning = 1
    redraw!
    call s:HandleCmdResult("connected to VimDebug daemon")
    call s:Handshake()
    call s:HandleCmdResult("started the debugger")
    call s:SocketConnect2()
    call s:HandleCmdResult2()
+   let s:dbgrIsRunning = 1
 endfunction
 function! DBGRnext()
    if !s:Copacetic()
@@ -276,7 +278,7 @@ endfunction
 " returns 1 if everything is copacetic
 " returns 0 if things are not copacetic
 function! s:Copacetic()
-   if s:fileName == ""
+   if s:dbgrIsRunning != 1
       echo "\rthe debugger is not running"
       return 0
    elseif s:programDone
@@ -355,8 +357,9 @@ function! s:Incantation(...)
    let s:bufNr       = bufnr("%")
    let s:fileName    = bufname("%")
    let s:debugger    = s:DbgrName()
-   let s:incantation = s:AutoIncantation(s:debugger) . 
-      \ (a:0 == 0 ? '' : (" " . join(a:000, " ")))
+   let s:incantation = (a:0 == 0
+      \ ? s:AutoIncantation(s:debugger)
+      \ : join(a:000, " "))
    return s:incantation
 endfunction 
 function! s:DbgrName()

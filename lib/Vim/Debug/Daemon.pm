@@ -2,9 +2,8 @@
 
 
 package Vim::Debug::Daemon;
-{
-  $Vim::Debug::Daemon::VERSION = 'v0.10';
-}
+
+our $VERSION = '0.13'; # VERSION
 
 use Moose;
 use MooseX::ClassAttribute;
@@ -154,15 +153,14 @@ sub out {
 1;
 
 __END__
+
 =pod
+
+=encoding utf-8
 
 =head1 NAME
 
 Vim::Debug::Daemon - Handle communication between a debugger and clients
-
-=head1 VERSION
-
-version v0.10
 
 =head1 SYNOPSIS
 
@@ -187,14 +185,13 @@ See L<Vim::Debug::Protocol> for a description of the communication protocol.
 
 =head1 AUTHOR
 
-Eric Johnson <vimdebug at iijo dot org>
+Eric Johnson <kablamo at iijo dot nospamthanks dot org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2011 by Eric Johnson.
+This software is copyright (c) 2013 by Eric Johnson.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-

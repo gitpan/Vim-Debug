@@ -9,10 +9,11 @@ use ExtUtils::MakeMaker 6.30;
 
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Perl wrapper around a command line debugger",
-  "AUTHOR" => "Eric Johnson <vimdebug at iijo dot org>",
+  "ABSTRACT" => "Integrate the Perl debugger with Vim",
+  "AUTHOR" => "Eric Johnson <kablamo at iijo dot nospamthanks dot org>",
   "BUILD_REQUIRES" => {
-    "English" => 0,
+    "File::Find" => 0,
+    "File::Temp" => 0,
     "Net::Telnet" => 0,
     "Test::More" => 0
   },
@@ -21,12 +22,17 @@ my %WriteMakefileArgs = (
   },
   "DISTNAME" => "Vim-Debug",
   "EXE_FILES" => [
-    "bin/vdd"
+    "bin/vdd",
+    "bin/vimdebug-install"
   ],
   "LICENSE" => "perl",
   "NAME" => "Vim::Debug",
   "PREREQ_PM" => {
     "Carp" => 0,
+    "File::Basename" => 0,
+    "File::Copy::Recursive" => 0,
+    "File::Path" => 0,
+    "Getopt::Long" => 0,
     "IO::Pty" => 0,
     "IPC::Run" => 0,
     "Moose" => 0,
@@ -34,10 +40,12 @@ my %WriteMakefileArgs = (
     "Moose::Util" => 0,
     "MooseX::ClassAttribute" => 0,
     "POE" => 0,
+    "POE::Component::Server::TCP" => 0,
+    "Try::Tiny" => 0,
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "v0.10",
+  "VERSION" => "0.13",
   "test" => {
     "TESTS" => "t/*.t"
   }
