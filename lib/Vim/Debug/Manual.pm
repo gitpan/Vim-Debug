@@ -3,7 +3,7 @@
 
 package Vim::Debug::Manual;
 
-our $VERSION = '0.14'; # VERSION
+our $VERSION = '0.901'; # VERSION
 
 __END__
 

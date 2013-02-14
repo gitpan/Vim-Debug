@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # PODNAME: vdd
 # ABSTRACT: The Vim Debugger Daemon
-our $VERSION = '0.14'; # VERSION
+our $VERSION = '0.901'; # VERSION
 
 use strict;
 use warnings;
