@@ -3,7 +3,7 @@
 
 package Vim::Debug::Manual;
 
-our $VERSION = '0.901'; # VERSION
+our $VERSION = '0.902'; # VERSION
 
 __END__
 
@@ -34,7 +34,7 @@ libraries use L<cpanm|https://metacpan.org/module/App::cpanminus>:
     curl -L http://cpanmin.us | perl - --sudo App::cpanminus
 
     # install VimDebug Perl libraries
-    cpanm VimDebug
+    cpanm Vim::Debug
 
 Next, install the Vim component:
 

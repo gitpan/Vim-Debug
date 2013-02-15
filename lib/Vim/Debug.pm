@@ -3,7 +3,7 @@
 
 package Vim::Debug;
 
-our $VERSION = '0.901'; # VERSION
+our $VERSION = '0.902'; # VERSION
 
 use Carp;
 use IO::Pty;

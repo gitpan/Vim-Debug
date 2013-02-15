@@ -10,7 +10,7 @@ build_requires:
 configure_requires:
   ExtUtils::MakeMaker: 6.30
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 4.300029, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Dist::Zilla version 4.300030, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -27,19 +27,19 @@ no_index:
 provides:
   Vim::Debug:
     file: lib/Vim/Debug.pm
-    version: 0.901
+    version: 0.902
   Vim::Debug::Daemon:
     file: lib/Vim/Debug/Daemon.pm
-    version: 0.901
+    version: 0.902
   Vim::Debug::Manual:
     file: lib/Vim/Debug/Manual.pm
-    version: 0.901
+    version: 0.902
   Vim::Debug::Perl:
     file: lib/Vim/Debug/Perl.pm
-    version: 0.901
+    version: 0.902
   Vim::Debug::Protocol:
     file: lib/Vim/Debug/Protocol.pm
-    version: 0.901
+    version: 0.902
 requires:
   Carp: 0
   File::Basename: 0
@@ -62,4 +62,4 @@ resources:
   bugtracker: https://github.com/kablamo/VimDebug/issues
   homepage: https://metacpan.org/release/Vim-Debug
   repository: git://github.com/kablamo/VimDebug.git
-version: 0.901
+version: 0.902
