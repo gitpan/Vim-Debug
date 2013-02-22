@@ -357,7 +357,7 @@ function! s:Incantation(...)
    let s:bufNr       = bufnr("%")
    let s:fileName    = bufname("%")
    let s:debugger    = s:DbgrName()
-   let s:incantation = (a:0 == 0
+   let s:incantation = ((a:0 == 0 || a:1 == "")
       \ ? s:AutoIncantation(s:debugger)
       \ : join(a:000, " "))
    return s:incantation

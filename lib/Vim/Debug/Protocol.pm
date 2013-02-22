@@ -3,7 +3,7 @@
 
 package Vim::Debug::Protocol;
 
-our $VERSION = '0.902'; # VERSION
+our $VERSION = '0.903'; # VERSION
 
 use Moose;
 use MooseX::ClassAttribute;

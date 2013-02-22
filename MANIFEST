@@ -21,6 +21,7 @@ lib/Vim/Debug/_vim/doc/VimDebug.txt
 lib/Vim/Debug/_vim/plugin/VimDebug.vim
 script/vim
 t/00-compile.t
+t/00-report-prereqs.t
 t/gdb.c
 t/lib/Vim/Debug/Client.pm
 t/perl.compilerError.pl
@@ -37,7 +38,6 @@ t/ruby.compilerError.rb
 t/ruby.notready
 t/ruby.rb
 t/ruby.runtimeError.rb
-xt/author/critic.t
 xt/release/distmeta.t
 xt/release/pod-coverage.t
 xt/release/pod-syntax.t

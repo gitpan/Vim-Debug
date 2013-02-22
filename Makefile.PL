@@ -12,8 +12,11 @@ my %WriteMakefileArgs = (
   "ABSTRACT" => "Integrate the Perl debugger with Vim",
   "AUTHOR" => "Eric Johnson <kablamo at iijo dot nospamthanks dot org>",
   "BUILD_REQUIRES" => {
+    "ExtUtils::MakeMaker" => 0,
     "File::Find" => 0,
+    "File::Spec::Functions" => 0,
     "File::Temp" => 0,
+    "List::Util" => 0,
     "Net::Telnet" => 0,
     "Test::More" => 0
   },
@@ -45,7 +48,7 @@ my %WriteMakefileArgs = (
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "0.902",
+  "VERSION" => "0.903",
   "test" => {
     "TESTS" => "t/*.t"
   }
