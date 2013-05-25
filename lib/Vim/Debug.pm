@@ -1,35 +1,36 @@
 # ABSTRACT: Perl wrapper around a command line debugger
 
-
 package Vim::Debug;
 
-our $VERSION = '0.903'; # VERSION
+our $VERSION = '0.904'; # VERSION
 
 use Carp;
 use IO::Pty;
 use IPC::Run;
 use Moose ;
 use Moose::Util qw(apply_all_roles);
+use Vim::Debug::Protocol;
 
 $| = 1;
 
 my $READ;
 my $WRITE;
 
-my $COMPILER_ERROR = "compiler error";
-my $RUNTIME_ERROR  = "runtime error";
-my $APP_EXITED     = "application exited";
-my $DBGR_READY     = "debugger ready";
+    # Debugger statuses.
+sub s_compilerError { Vim::Debug::Protocol->k_compilerError }
+sub s_runtimeError  { Vim::Debug::Protocol->k_runtimeError }
+sub s_appExited     { Vim::Debug::Protocol->k_appExited }
+sub s_dbgrReady     { Vim::Debug::Protocol->k_dbgrReady }
 
 
-has invoke   => ( is => 'ro', isa => 'Str', required => 1 );
-has language => ( is => 'ro', isa => 'Str', required => 1 );
+has invoke    => ( is => 'ro', isa => 'Str', required => 1 );
+has language  => ( is => 'ro', isa => 'Str', required => 1 );
 
-has stop            => ( is => 'rw', isa => 'Int' );
-has line            => ( is => 'rw', isa => 'Int' );
-has file            => ( is => 'rw', isa => 'Str' );
-has value           => ( is => 'rw', isa => 'Str' );
-has status          => ( is => 'rw', isa => 'Str' );
+has stop      => ( is => 'rw', isa => 'Int' );
+has line      => ( is => 'rw', isa => 'Int' );
+has file      => ( is => 'rw', isa => 'Str' );
+has value     => ( is => 'rw', isa => 'Str' );
+has status    => ( is => 'rw', isa => 'Str' );
 
 has _timer    => ( is => 'rw', isa => 'IPC::Run::Timer' );
 has _dbgr     => ( is => 'rw', isa => 'IPC::Run', handles => [qw(finish)] );
@@ -47,7 +48,7 @@ around BUILDARGS => sub {
         $args{invoke} = [split(/\s+/, $args{invoke})];
         return $class->$orig(%args);
     }
-    
+
     return $class->$orig(@_);
 };
 
@@ -55,8 +56,6 @@ sub BUILD {
     my $self = shift;
     apply_all_roles($self, 'Vim::Debug::' . $self->language);
 }
-
-
 
 sub start {
     my $self = shift or confess;
@@ -71,13 +70,12 @@ sub start {
     # spawn debugger process
     $self->_dbgr(
         IPC::Run::start(
-          \@cmd, 
-          '<pty<', \$WRITE,
-          '>pty>', \$READ,
-          $self->_timer
-       )
+            \@cmd,
+            '<pty<', \$WRITE,
+            '>pty>', \$READ,
+            $self->_timer,
+        )
     );
-
     return $self;
 }
 
@@ -90,78 +88,61 @@ sub write {
     return;
 }
 
+# --------------------------------------------------------------------
 sub read {
-   my $self = shift or confess;
-   $| = 1;
+    my $self = shift or confess;
 
-   my $dbgrPromptRegex    = $self->dbgrPromptRegex;
-   my $compilerErrorRegex = $self->compilerErrorRegex;
-   my $runtimeErrorRegex  = $self->runtimeErrorRegex;
-   my $appExitedRegex     = $self->appExitedRegex;
+    $self->_timer->reset();
+    eval { $self->_dbgr->pump_nb() };
+    if ($@ =~ /process ended prematurely/) {
+        undef $@;
+        return 1;
+    }
+    elsif ($@) {
+        die $@;
+    }
 
-   $self->_timer->reset();
-   eval { $self->_dbgr->pump_nb() };
-   my $out = $READ;
-
-   if ($@ =~ /process ended prematurely/) {
-       undef $@;
-       return 1;
-   }
-   elsif ($@) {
-       die $@;
-   }
-
-   if ($self->stop) {
-       $self->_dbgr->signal("INT");
-       $self->_timer->reset();
-       $self->_dbgr->pump() until ($READ =~ /$dbgrPromptRegex/    || 
-                                   $READ =~ /$compilerErrorRegex/ || 
-                                   $READ =~ /$runtimeErrorRegex/  || 
-                                   $READ =~ /$appExitedRegex/); 
-       $out = $READ;
-   }
-
-   $self->out($out);
-
-   if    ($self->out =~ $dbgrPromptRegex)    { $self->status($DBGR_READY)     }
-   elsif ($self->out =~ $compilerErrorRegex) { $self->status($COMPILER_ERROR) }
-   elsif ($self->out =~ $runtimeErrorRegex)  { $self->status($RUNTIME_ERROR)  }
-   elsif ($self->out =~ $appExitedRegex)     { $self->status($APP_EXITED)     }
-   else                                      { return 0                       }
-
-   $self->_original($out);
-   $self->parseOutput($self->out);
-
-   return 1;
+    my $out = $READ;
+    if ($self->stop) {
+        $self->_dbgr->signal("INT");
+        $self->_timer->reset();
+        $self->_dbgr->pump() until $self->prompted_and_parsed($READ);
+        $out = $READ;
+    }
+    $self->out($out);
+    $self->prompted_and_parsed($self->out) || return 0;
+    $self->_original($out);
+    return 1;
 }
 
 sub out {
-   my $self = shift or confess;
-   my $out = '';
+    my $self = shift or confess;
+    my $out = '';
 
-   if (@_) {
-      $out = shift;
+    if (@_) {
+        $out = shift;
 
-      my $originalLen = length $self->_original;
-      $out = substr($out, $originalLen);
-        
-      # vim is not displaying newline characters correctly for some reason.
-      # this localizes the newlines.
-      $out =~ s/(?:\015{1,2}\012|\015|\012)/\n/sg;
+        my $originalLen = length $self->_original;
+        $out = substr($out, $originalLen);
 
-      # save
-      $self->_out($out);
-   }
+        # vim is not displaying newline characters correctly for some reason.
+        # this localizes the newlines.
+        $out =~ s/(?:\015{1,2}\012|\015|\012)/\n/sg;
 
-   return $self->_out;
+        # save
+        $self->_out($out);
+    }
+
+    return $self->_out;
 }
 
 sub translate {
     my ($self, $in) = @_;
-    my @cmds = ();
+    my @cmds;
 
        if ($in =~ /^next$/            ) { @cmds = $self->next          }
     elsif ($in =~ /^step$/            ) { @cmds = $self->step          }
+    elsif ($in =~ /^stepout$/         ) { @cmds = $self->stepout       }
     elsif ($in =~ /^cont$/            ) { @cmds = $self->cont          }
     elsif ($in =~ /^break:(\d+):(.+)$/) { @cmds = $self->break($1, $2) }
     elsif ($in =~ /^clear:(\d+):(.+)$/) { @cmds = $self->clear($1, $2) }
@@ -170,8 +151,8 @@ sub translate {
     elsif ($in =~ /^command:(.+)$/    ) { @cmds = $self->command($1)   }
     elsif ($in =~ /^restart$/         ) { @cmds = $self->restart       }
     elsif ($in =~ /^quit$/            ) { @cmds = $self->quit($1)      }
-#   elsif ($in =~ /^(\w+):(.+)$/      ) { @cmds = $self->$1($2)        }
-#   elsif ($in =~ /^(\w+)$/           ) { @cmds = $self->$1()          }
+   # elsif ($in =~ /^(\w+):(.+)$/      ) { @cmds = $self->$1($2)        }
+   # elsif ($in =~ /^(\w+)$/           ) { @cmds = $self->$1()          }
     else { die "ERROR 002.  Please email vimdebug at iijo dot org.\n"  }
 
     return \@cmds;
@@ -180,15 +161,14 @@ sub translate {
 sub state {
     my $self = shift;
     return (
-        stop       => $self->stop,
-        line       => $self->line,
-        file       => $self->file,
-        value      => $self->value,
-        status     => $self->status,
-        output     => $self->out,
+        stop   => $self->stop,
+        line   => $self->line,
+        file   => $self->file,
+        value  => $self->value,
+        status => $self->status,
+        output => $self->out,
     );
 }
-
 
 1;
 
@@ -207,8 +187,8 @@ Vim::Debug - Perl wrapper around a command line debugger
     package Vim::Debug;
 
     my $debugger = Vim::Debug->new(
-        language => 'Perl',                    # required
-        invoke   => 'perl -Ilib -d t/perl.pl', # required
+        language => 'Perl',
+        invoke   => 'perl -Ilib -d t/perl.pl 42',
     );
 
     $debugger->start;
@@ -221,7 +201,7 @@ Vim::Debug - Perl wrapper around a command line debugger
     $debugger->next;          sleep(1) until $debugger->read;
     $debugger->write('help'); sleep(1) until $debugger->read;
 
-    $debugger->quit; 
+    $debugger->quit;
 
 =head1 DESCRIPTION
 
@@ -229,17 +209,23 @@ If you are new to Vim::Debug please read the user manual,
 L<Vim::Debug::Manual>, first.
 
 Vim::Debug is an object oriented wrapper around the Perl command line
-debugger.  In theory the debugger could be for any language -- not just Perl.
-But only Perl is supported currently.
+debugger. In theory the debugger could be for any language -- not just
+Perl. But only Perl is supported currently.
 
-The read() method is non blocking.  This allows a user to send an interrupt
-when they get stuck in an infinite loop.
+The read() method is non blocking. This allows a user to send an
+interrupt when they get stuck in an infinite loop.
 
-=head1 ATTRIBUTES
+=head1 METHODS
+
+=head2 language
+
+The language that the debugger is made to handle. Currently, only
+'Perl' is supported.
 
 =head2 invoke
 
-=head2 language
+The string used to invoke the debugger, for example 'perl -Ilib -d
+t/perl.pl 42',
 
 =head2 stop
 
@@ -251,34 +237,33 @@ when they get stuck in an infinite loop.
 
 =head2 status
 
-=head1 FUNCTIONS
-
 =head2 start()
 
-Starts up the command line debugger in a seperate process.
+Starts up the command line debugger in a separate process.
 
-start() always returns undef.
+Returns $self.
 
 =head2 write($command)
 
-Write $command to the debugger's stdin.  This method blocks until the debugger process
-reads.  Be sure to include a newline.
+Write $command to the debugger's stdin. This method blocks until the
+debugger process reads. Be sure to include a newline.
 
-write() always returns undef;
+Return value should be ignored.
 
 =head2 read()
 
-Performs a nonblocking read on stdout from the debugger process.  read() first
-looks for a debugger prompt.  
+Performs a non-blocking read on stdout from the debugger process.
+read() first looks for a debugger prompt.
 
-If one is not found, the debugger isn't finished thinking so read() returns 0.   
+If none is found, the debugger isn't finished thinking so read()
+returns 0.
 
 If a debugger prompt is found, the output is parsed.  The following
 information is parsed out and saved into attributes: line(), file(),
 value(), and out().
 
-read() will also send an interrupt (CTL+C) to the debugger process if the
-stop() attribute is set to true.
+read() will also send an interrupt (CTL+C) to the debugger process if
+the stop() attribute is set to true.
 
 =head2 out($out)
 
@@ -287,12 +272,18 @@ irrelevant error messages or whatever) from text and saves the value.
 
 If called without a parameter, out() returns the saved value.
 
-=head2 translate($in)                                                                                                          
+=head2 translate($in)
 
-Translate a protocol command ($in) to a native debugger command.  The native                                                   
-debugger command is returned as an arrayref of strings.                                                                           
+Translate protocol command $in to a native debugger command, returned
+as an arrayref of strings.
 
-Dies if no translation is found.                                                                                               
+Dies if no translation is found.
+
+=head2 state()
+
+Returns a hash (a list actually) whose keys are qw<stop line file
+value status output>, and whose values are the corresponding values of
+the object.
 
 =head1 SEE ALSO
 

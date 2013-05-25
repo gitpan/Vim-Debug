@@ -32,6 +32,7 @@ my %WriteMakefileArgs = (
   "NAME" => "Vim::Debug",
   "PREREQ_PM" => {
     "Carp" => 0,
+    "Dir::Self" => 0,
     "File::Basename" => 0,
     "File::Copy::Recursive" => 0,
     "File::Path" => 0,
@@ -48,7 +49,7 @@ my %WriteMakefileArgs = (
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "0.903",
+  "VERSION" => "0.904",
   "test" => {
     "TESTS" => "t/*.t"
   }

@@ -1,20 +1,16 @@
 #!/usr/bin/env perl
 # PODNAME: vdd
 # ABSTRACT: The Vim Debugger Daemon
-our $VERSION = '0.903'; # VERSION
+our $VERSION = '0.904'; # VERSION
 
 use strict;
 use warnings;
 use Vim::Debug::Daemon;
 
-$SIG{INT} = \&signalHandler;
+    # Die when children die.
+$SIG{INT} = sub { exit };
 
 Vim::Debug::Daemon->new->run;
-
-# die when children die
-sub signalHandler {
-   exit;
-}
 
 __END__
 

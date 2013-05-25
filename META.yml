@@ -30,21 +30,22 @@ no_index:
 provides:
   Vim::Debug:
     file: lib/Vim/Debug.pm
-    version: 0.903
+    version: 0.904
   Vim::Debug::Daemon:
     file: lib/Vim/Debug/Daemon.pm
-    version: 0.903
+    version: 0.904
   Vim::Debug::Manual:
     file: lib/Vim/Debug/Manual.pm
-    version: 0.903
+    version: 0.904
   Vim::Debug::Perl:
     file: lib/Vim/Debug/Perl.pm
-    version: 0.903
+    version: 0.904
   Vim::Debug::Protocol:
     file: lib/Vim/Debug/Protocol.pm
-    version: 0.903
+    version: 0.904
 requires:
   Carp: 0
+  Dir::Self: 0
   File::Basename: 0
   File::Copy::Recursive: 0
   File::Path: 0
@@ -65,4 +66,9 @@ resources:
   bugtracker: https://github.com/kablamo/VimDebug/issues
   homepage: https://metacpan.org/release/Vim-Debug
   repository: git://github.com/kablamo/VimDebug.git
-version: 0.903
+version: 0.904
+x_contributors:
+  - 'Eric Johnson <eric.git@iijo.org>'
+  - 'Eric Johnson <github@iijo.org>'
+  - 'Gregg Jensen <g_jensen@swbell.net>'
+  - 'Luc St-Louis <lucs@pobox.com>'

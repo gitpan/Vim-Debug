@@ -1,66 +1,93 @@
 # ABSTRACT: Perl debugger interface.
 
-
 package Vim::Debug::Perl;
 
-our $VERSION = '0.903'; # VERSION
+our $VERSION = '0.904'; # VERSION
 
 use Moose::Role;
 
 $ENV{"PERL5DB"}     = 'BEGIN {require "perl5db.pl";}';
 $ENV{"PERLDB_OPTS"} = "ornaments=''";
 
+sub next     { 'n' }
+sub step     { 's' }
+sub stepout  { 'r' }
+sub cont     { 'c' }
+sub break    { "f $_[2]", "b $_[1]" }
+sub clear    { "f $_[2]", "B $_[1]" }
+sub clearAll { 'B *' }
+sub print    { "x $_[1]" }
+sub command  { $_[1] }
+sub restart  { 'R' }
+sub quit     { 'q' }
 
+    # Debugger prompt regex.
+my $dpr = qr/  DB<+\d+>+ \z/s;
 
-our $dpr = '.*  DB<+\d+>+ '; # debugger prompt regex
-sub dbgrPromptRegex    { qr/$dpr/ }
-sub compilerErrorRegex { qr/aborted due to compilation error${dpr}/ }
-sub runtimeErrorRegex  { qr/ at .* line \d+${dpr}/ }
-sub appExitedRegex     { qr/((\/perl5db.pl:)|(Use .* to quit or .* to restart)|(\' to quit or \`R\' to restart))${dpr}/ }
+sub prompted_and_parsed {
+    my ($self, $str) = @_;
 
+        # If we don't have the debugger prompt string, we're not ready
+        # to parse.
+    return unless $str =~ s/$dpr//;
 
-sub next                { return ( 'n'                  ) }
-sub step                { return ( 's'                  ) }
-sub cont                { return ( 'c'                  ) }
-sub break               { return ( "f $_[2]", "b $_[1]" ) }
-sub clear               { return ( "f $_[2]", "B $_[1]" ) }
-sub clearAll            { return ( "B *"                ) }
-sub print               { return ( "x $_[1]"            ) }
-sub command             { return ( $_[1]                ) }
-sub restart             { return ( "R"                  ) }
-sub quit                { return ( "q"                  ) }
-
+    $self->parseOutput($str);
+    return 1;
+}
 
 sub parseOutput {
-   my $self   = shift or die;
-   my $output = shift or die;
+    my ($self, $str) = @_;
 
-   {
-      # See .../t/VD_DI_Perl.t for test cases.
-      my $file;
-      my $line;
-      $output =~ /
-         ^ \w+ ::
-         (?: \w+ :: )*
-         (?: CODE \( 0x \w+ \) | \w+ )?
-         \(
-            (?: .* \x20 )?
-            ( .+ ) : ( \d+ )
-         \):
-      /xm;
-      $self->file($1)   if defined $1;
-      $self->line($2) if defined $2;
-   }
+    my $file;
+    my $line;
+    my $status;
 
-   {
-      if ($output =~ /^x .*\n/m) {
-         $output =~ s/^x .*\n//m; # remove first line
-         $output =~ s/\n.*$//m; # remove last line
-         $self->value($output);
-      }
-   }
+    if (
+        $str  =~ /
+            ^ Execution\ of\ .*?\ aborted\ due\ to\ compilation\ errors\.
+            \n \ at\ (.*?)\ line\ (\d+)\.
+        /xm
+    ) {
+        $status = $self->s_compilerError;
+        $file = $1;
+        $line = $2;
+    }
+    elsif (
+        $str =~ /
+            (?:
+                (?: \/perl5db.pl: ) |
+                (?: Use\ .*\ to\ quit\ or\ .*\ to\ restart ) |
+                (?: '\ to\ quit\ or\ `R'\ to\ restart )
+            )
+        /sx
+    ) {
+        $status = $self->s_appExited;
+    }
+    else {
+        $status = $self->s_dbgrReady;
+        $str =~ /
+            ^ \w+ ::
+            (?: \w+ :: )*
+            (?: CODE \( 0x \w+ \) | \w+ )?
+            \(
+                (?: .* \x20 )?
+                ( .+ ) : ( \d+ )
+            \):
+        /xm;
+        $file = $1;
+        $line = $2;
 
-   return undef;
+            # Remove first and last lines when 'x' was the command,
+            # the text remaining being the value that was requested.
+        if ($str =~ /^x .*\n/m) {
+            $str =~ s/^x .*\n//m;
+            $str =~ s/\n.*$//m;
+            $self->value($str);
+        }
+    }
+    $self->file($file) if $file;
+    $self->line($line) if $line;
+    $self->status($status);
 }
 
 1;
@@ -84,25 +111,19 @@ This module is a role that is dynamically applied to an Vim::Debug instance.
 L<Vim::Debug> represents a debugger.  This module only handles the Perl
 specific bits.  Theoretically there might be a Ruby or Python role someday.
 
-=head1 DEBUGGER OUTPUT REGEX CLASS ATTRIBUTES
+=head1 METHODS
 
-These attributes are used to parse debugger output and are used by Vim::Debug.
-They return a regex and ignore all values passed to them.  
+=head2 prompted_and_parsed($output)
 
-=head2 dbgrPromptRegex()
+If the $output string doesn't end with the debugger prompt string,
+this method will return false, because that means that there should be
+more debugger output coming.
 
-=head2 compilerErrorRegex()
+Otherwise, $output will be parsed and the object's 'file', 'line',
+'value', and 'status' attributes will be set and the method will
+return true.
 
-=head2 runtimeErrorRegex()
-
-=head2 appExitedRegex()
-
-=head1 TRANSLATION CLASS ATTRIBUTES
-
-These attributes are used to convert commands from the
-communication protocol to commands the Perl debugger can recognize.  For
-example, the communication protocol uses the keyword 'next' while the Perl
-debugger uses 'n'.
+=head1 FUNCTIONS
 
 =head2 next()
 
@@ -124,15 +145,12 @@ debugger uses 'n'.
 
 =head2 quit()
 
-=head2 METHODS
+=head1 TRANSLATION CLASS ATTRIBUTES
 
-=head2 parseOutput($output)
-
-$output is output from the Perl debugger.  This method parses $output and
-saves relevant valus to the line, file, and output attributes (these
-attributes are defined in Vim::Debug)
-
-Returns undef.
+These attributes are used to convert commands from the communication
+protocol to commands the Perl debugger can recognize.  For example,
+the communication protocol uses the keyword 'next' while the Perl
+debugger uses 'n'.
 
 =head1 AUTHOR
 

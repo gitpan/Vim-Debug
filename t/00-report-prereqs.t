@@ -11,6 +11,7 @@ use List::Util qw/max/;
 
 my @modules = qw(
   Carp
+  Dir::Self
   ExtUtils::MakeMaker
   File::Basename
   File::Copy::Recursive
